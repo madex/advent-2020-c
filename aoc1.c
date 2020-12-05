@@ -23,10 +23,6 @@ int main() {
                             years[i] * years[j]
                     );
                 }
-            }
-        }
-        for (int i = 0; i < lines; i++) {
-            for (int j = i; j < lines; j++) {
                 for (int k = j; k < lines; k++) {
                     if (years[i] + years[j] + years[k] == 2020) {
                         printf("%d * %d * %d = %d\n", 
