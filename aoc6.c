@@ -13,7 +13,7 @@ bool checkQuestions(char *line, uint32_t *mask, uint32_t *mask2) {
         m |= (1 << i);
         count++;
     }
-    if (*mask == 0) {
+    if (*mask == 0) { // init mask2 can not be done with mask2
         *mask2 = m;
     } 
     *mask |= m;
