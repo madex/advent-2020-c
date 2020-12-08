@@ -59,16 +59,16 @@ void reset(instr_t *code, int codeLines) {
 int fixAndExecToUntilFirstRepeat(instr_t *code, int codeLines) {
     // bruteforce chang one instruction
     for (int i = 0; i < codeLines; i++) {
-        reset(code, codeLines);
         instr_t *c = &code[i];
         if (c->inst != 'a') {
-            c->inst = c->inst == 'j' ? 'n' : 'j'; 
+            c->inst = c->inst == 'j' ? 'n' : 'j'; // change inst
+            reset(code, codeLines);
             int acc = execToUntilFirstRepeat(code, codeLines);
             if (highestPc >= codeLines - 1) {
                 printf("fix line %d\n", i);
                 return acc;
             }
-            c->inst = c->inst == 'j' ? 'n' : 'j'; 
+            c->inst = c->inst == 'j' ? 'n' : 'j'; // change it back
         } 
     }
     return 0;
