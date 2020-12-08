@@ -58,7 +58,7 @@ void markLinksTo(int id) {
         color_t *c = &colors[i];
         for (int j = 0; j < c->linkCount; j++) {
             if (c->linkToIndex[j].id == id) {
-                colors[i].linked = true;
+                c->linked = true;
                 markLinksTo(i);
             }
         }
@@ -72,7 +72,6 @@ int countBagColorsThatContain(char * str) {
     int count = 0;
     for (int i = 0; i < colorsCount; i++) {
         count += (colors[i].linked ? 1 : 0); 
-        colors[i].linked = false;
     }
     return count;
 }
