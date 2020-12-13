@@ -12,8 +12,7 @@ int waitMulLine(int earliesDep, char* buf) {
             buf++; // no x at end
         } else {
             int line = strtol(buf, &buf, 0);
-            int dep = (((earliesDep - 1) / line) + 1) * line; // -1 bus is comming at earliesDep
-            int wait = dep - earliesDep;
+            int wait = line - (earliesDep % line);
             if (lineMin == 0 || wait < waitMin) {
                 lineMin = line;
                 waitMin = wait;
@@ -28,15 +27,14 @@ int waitMulLine(int earliesDep, char* buf) {
 }
 
 uint64_t waitTime(uint64_t dep, uint64_t line) {
-    uint64_t depLine = (((dep - 1) / line) + 1) * line; // -1 bus is comming at earliesDep
-    return depLine - dep;
+    return line - (dep % line);
 }
 
 uint64_t earliestTimestamp(int earliesDep, char* buf) {
-    uint64_t lines[lineCount];
+    uint64_t lines[lineCount]; // double parse because of dynamic length
     int i = 0;
     while (buf != 0 && *buf != 0) {
-        if (*buf == 'x' || *buf == 10) { // 10 for skipping newlines
+        if (*buf == 'x') { // 10 for skipping newlines
             buf++; // no x at end
             lines[i++] = 0;
         } else {
@@ -44,28 +42,34 @@ uint64_t earliestTimestamp(int earliesDep, char* buf) {
                 lines[i++] = strtol(buf, &buf, 0);
             }
         }
-        if (*buf == ',') {
+        if (*buf == ',' || *buf == 10) {
             buf++;
         }
     }
     uint64_t time = 0;
+    uint64_t addTime = lines[0];
+    //uint64_t last = 0;
+    int lcmCalced = 0;
     while (1) {
         bool valid = true;
-        if (time == 7903) {
-            valid = true;
-        }
         for (uint64_t i = 1; i < lineCount; i++) {
             if (lines[i] > 0) {
-                if (waitTime(time, lines[i]) != i) {
+                if (waitTime(time, lines[i]) != i % lines[i]) { // % is important
                     valid = false;
                     break;
+                } else {
+                    if (i > lcmCalced) {
+                        lcmCalced = i;
+                        addTime *= lines[i];
+                        //printf("%llu %llu %llu\n", time, lines[i], time-last);
+                    }
                 }
             }
         }
         if (valid) {
             return time;
         }
-        time += lines[0];
+        time += addTime;
     } while (1);
     return time;
 }
@@ -73,21 +77,15 @@ uint64_t earliestTimestamp(int earliesDep, char* buf) {
 int main(void) {
     FILE* f = fopen("input13.txt", "r");
     if (f != NULL) {
-        char buf[512];
+        char buf[256];
         int earliesDeparture;
         if (fgets(buf, sizeof buf, f) != NULL) {
             earliesDeparture = strtol(buf, 0, 0);
         }
         if (fgets(buf, sizeof buf, f) != NULL) {
-            lineCount = 4;
-            printf("1789,37,47,1889 = 1202161486= %llu\n", 
-                earliestTimestamp(earliesDeparture, "1789,37,47,1889"));
-            lineCount = 5;
-            printf("67,7,x,59,61 = 1261476= %llu\n", 
-                earliestTimestamp(earliesDeparture, "67,7,x,59,61\n"));
             printf("waittime * busline = %d\n", 
                 waitMulLine(earliesDeparture, buf));
-            printf("earliest timestall all busses = %llu\n", 
+            printf("earliest timestall for all busses = %llu\n", 
                 earliestTimestamp(earliesDeparture, buf));
         }
         fclose(f);
