@@ -4,7 +4,7 @@
 #include <string.h>
 
 int compInt(const void *p1, const void *p2) {
-    return *(int*)p1 < *(int*)p2 ? -1 : *(int*)p1 != *(int*)p2;
+    return *(int*)p1 - *(int*)p2;
 }
 
 int calcJolts(int *nums, size_t len) {
