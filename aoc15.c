@@ -92,7 +92,7 @@ int game(char *input, int end) {
 
 int main(void) {
     //printf("Test p1 1 436 = %d\n", game("0,3,6", 2020));
-    //printf("Test p1 2 10 = %d\n", game("2,1,3"));
+    //printf("Test p1 2 10 = %d\n", game("2,1,3"), 2020);
     printf("result part1 = %d\n", game("0,13,1,8,6,15", 2020));
     //printf("Test p2 1  175594 = %d\n", game("0,3,6", 30000000));
     printf("result part2 = %d\n", game("0,13,1,8,6,15", 30000000));
