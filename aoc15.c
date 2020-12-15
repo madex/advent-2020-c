@@ -70,19 +70,17 @@ int game(char *input, int end) {
             s++;
         }
     }
+    // play game
     struct node *found = NULL;
-    int last = 0;
+    int nextValue = 0; // new value
     while (pos < end) {
-        if (found == NULL) { // not in list
-            value = 0;
-        } else {
-            value = (pos - 1) - last;
-        }
+        value = nextValue;
         found = search(root, value);
         if (found == NULL) {
+            nextValue = 0;
             insert(root, value, pos);
         } else {
-            last = found->last;
+            nextValue = pos - found->last;
             found->last = pos;
         }
         pos++;
