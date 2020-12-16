@@ -85,6 +85,7 @@ int game(char *input, int end) {
         }
         pos++;
     }
+    // TODO free tree
     return value;
 }
 
