@@ -53,7 +53,6 @@ int calculateNext(char *buf, int sideLen, int z, int level) {
                 bool wasSet = (px < sideLen && py < sideLen && pz < z && 
                                buf[pz*sideLen*sideLen + py*sideLen + px] == '#');
                 *c = n == 3 ? '#' : wasSet && n == 2 ? '#' : '.';
-                // (wasSet ? (n >= 2 && n <= 3 ? '#':'.') : (n == 3 ? '#' : '.'));
                 if (*c++ == '#') {
                     countHash++;
                 }
@@ -91,7 +90,6 @@ int calculateNext4D(char *buf, int sideLen, int z, int level) {
                     bool wasSet = (px < sideLen && py < sideLen && pz < z && pw < z &&
                                 buf[pw*sideLen*sideLen*sideLen + pz*sideLen*sideLen + py*sideLen + px] == '#');
                     *c = n == 3 ? '#' : wasSet && n == 2 ? '#' : '.';
-                    // (wasSet ? (n >= 2 && n <= 3 ? '#':'.') : (n == 3 ? '#' : '.'));
                     if (*c++ == '#') {
                         countHash++;
                     }
@@ -99,9 +97,8 @@ int calculateNext4D(char *buf, int sideLen, int z, int level) {
             }
         }
     }
-    return level > 1 ? calculateNext(cube, len, len, level - 1) : countHash;
+    return level > 1 ? calculateNext4D(cube, len, len, level - 1) : countHash;
 }
-
 
 void calcDir() {
     dir4_t *d = dir4d;
