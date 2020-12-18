@@ -13,19 +13,40 @@ typedef struct {
     int x ,y, z, w;
 } dir4_t;
 
+dir_t dir[26];
 dir4_t dir4d[80];
 
-dir_t dir[] = {
-    {-1, -1, -1}, { 0, -1, -1}, { 1, -1, -1},
-    {-1, -1,  0}, { 0, -1,  0}, { 1, -1,  0},
-    {-1, -1,  1}, { 0, -1,  1}, { 1, -1,  1},
-    {-1,  0, -1}, { 0,  0, -1}, { 1,  0, -1},
-    {-1,  0,  0},               { 1,  0,  0}, 
-    {-1,  0,  1}, { 0,  0,  1}, { 1,  0,  1},
-    {-1,  1, -1}, { 0,  1, -1}, { 1,  1, -1},
-    {-1,  1,  0}, { 0,  1,  0}, { 1,  1,  0},
-    {-1,  1,  1}, { 0,  1,  1}, { 1,  1,  1}
-};
+void calcDir() {
+    dir_t  *d3 = dir; 
+    dir4_t *d4 = dir4d;
+    for (int w = -1; w < 2; w++) {
+        for (int z = -1; z < 2; z++) {
+            for (int y = -1; y < 2; y++) {
+                for (int x = -1; x < 2; x++) {
+                    if (x == 0 && y == 0 && z ==0 && w == 0) {
+                        // own
+                    } else {
+                        d4->w = w;
+                        d4->z = z;
+                        d4->y = y;
+                        d4->x = x;
+                        d4++;
+                    }
+                    if (w == 1) { // add 3d rule here too
+                        if (x == 0 && y == 0 && z ==0) {
+                        // own
+                        } else {
+                            d3->z = z;
+                            d3->y = y;
+                            d3->x = x;
+                            d3++;
+                        } 
+                    }
+                }
+            }
+        }
+    }
+}
 
 int calculateNext(char *buf, int sideLen, int z, int level) {
     int len  = sideLen + 2;
@@ -100,26 +121,7 @@ int calculateNext4D(char *buf, int sideLen, int z, int level) {
     return level > 1 ? calculateNext4D(cube, len, len, level - 1) : countHash;
 }
 
-void calcDir() {
-    dir4_t *d = dir4d;
-    for (int w = -1; w < 2; w++) {
-        for (int z = -1; z < 2; z++) {
-            for (int y = -1; y < 2; y++) {
-                for (int x = -1; x < 2; x++) {
-                    if (x == 0 && y == 0 && z ==0 && w == 0) {
-                        // own
-                    } else {
-                        d->w = w;
-                        d->z = z;
-                        d->y = y;
-                        d->x = x;
-                        d++;
-                    }
-                }
-            }
-        }
-    }
-}
+
 
 int main(void) {
     FILE* f = fopen("input17.txt", "r");
