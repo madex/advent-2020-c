@@ -10,10 +10,9 @@ typedef struct {
     int dataCount;
 } buf_t;
 
-
 typedef struct {
     buf_t player[2];
-    uint32_t combination[2000]; // player 1 lower 16 Bit player 2 upper 16 bit
+    uint64_t combination[4000]; // player 1 lower 16 Bit player 2 upper 16 bit
     int combinationCount;
     int won;
     int game, round;
@@ -58,20 +57,20 @@ void bufPrint(buf_t *r, int player) {
     puts("\b\b  ");
 }
 
-void printGameResult(buf_t *r) {
+int getGameResult(buf_t *r) {
     int j = 1;
     int sum = 0;
     for (int i = r->dataCount - 1; i >= 0; i--) {
         sum += j++ * r->data[i];
     }
-    printf("GameResult: %d\n", sum);
+    return sum;
 }
 
 void play1(game_t *g) {
     g->won = g->player[1].dataCount == 0 ? 1 : 
              g->player[0].dataCount == 0 ? 2 : 0;
     if (g->won > 0) {
-        //printf("Player %d wins\n", g->won);
+        // printf("Player %d wins\n", g->won);
         return;
     }
     int p1 = takeFromBegin(&g->player[0]), p2 = takeFromBegin(&g->player[1]);
@@ -87,8 +86,8 @@ void play1(game_t *g) {
     play1(g);
 }
 
-bool addTurnWasBefore(game_t *g, int p1, int p2) {
-    uint32_t combined = p1 | ((uint32_t) p2 << 16);
+bool addTurnWasBefore(game_t *g) { // a hash map would be nicer here
+    uint64_t combined = getGameResult(&g->player[0]) + 100000 * getGameResult(&g->player[1]);
     for (int i = 0; i < g->combinationCount; i++) {
         if (g->combination[i] == combined) {
             return true;
@@ -107,7 +106,7 @@ void play2(game_t *g) {
     g->won = len2 == 0 ? 1 : 
              len1 == 0 ? 2 : 0;
 
-    if (g->won == 0 && addTurnWasBefore(g, g->player[0].data[0], g->player[1].data[0])) {
+    if (addTurnWasBefore(g)) {
         g->won = 1;
     }
     if (g->won > 0) {
@@ -117,14 +116,16 @@ void play2(game_t *g) {
     }
     int p1 = takeFromBegin(&g->player[0]), p2 = takeFromBegin(&g->player[1]);
     bool player2Wins = p1 < p2;
-    if (len1 > p1 && len2 > p2) {
+    if (len1 > p1 && len2 > p2) { // len is includuing p1 and p2
         game_t subGame = *g;
         subGame.game++;
         subGame.round = 0;
+        subGame.player[0].dataCount = p1;
+        subGame.player[1].dataCount = p2;
         subGame.combinationCount = 0;
         // printf(">> Game %d <<\n", subGame.game);
         play2(&subGame);
-        player2Wins = bufLen(&subGame.player[1]) > 0;
+        player2Wins = (subGame.won == 2);
         // printf(">> END Game <<\n");
     }
     if (player2Wins) {
@@ -138,9 +139,6 @@ void play2(game_t *g) {
     // printf("round %d game %d combinations %d\n", g->round, g->game, g->combinationCount);
     // bufPrint(&g->player[0], 0);
     // bufPrint(&g->player[0], 1);
-    if (g->round == 63 && g->game == 11) {
-        g->game = 11;
-    }
     play2(g);
 }
 
@@ -159,15 +157,18 @@ int main(void) {
                 }
             } else {
                 part++;
+                if (part == 2) {
+                    return 1;
+                }
             }
         }
         // bufPrint(game.player, 0);
         // bufPrint(game.player, 1);
         game_t game2 = game;
         play1(&game);
-        printGameResult(&game.player[game.won - 1]);
+        printf("Part 1: %d\n", getGameResult(&game.player[game.won - 1]));
         play2(&game2);
-        printGameResult(&game2.player[game2.won - 1]);
+        printf("Part 2: %d\n", getGameResult(&game2.player[game2.won - 1]));
         fclose(f);
     }
     return 0;
