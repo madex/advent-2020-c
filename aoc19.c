@@ -16,7 +16,7 @@ rule_t rule[200];
 void parseRule(char *b) {
     int num = strtol(b, &b, 0);
     if (num >= sizeof rule / sizeof rule[0]) {
-        printf("error rule\n");
+        printf("error rule\n");  
         return;
     }
     rule_t *r = &rule[num];
@@ -39,34 +39,51 @@ void parseRule(char *b) {
     }
 }
 
-bool checkRule(int ruleId, char *s, char **sret) {
+typedef struct {
+    int strPosCount;
+    int strPos[100];
+} result_t;
+
+void checkRule(int ruleId, char *s, int pos, result_t *res, int depth) {
     rule_t *r = &rule[ruleId];
-    *sret = s;
-    bool result = false;
-    if (r->subRuleCount == 0) {
-        result = **sret == r->match;
-        (*sret)++;
-    } else if (*s == 0 || *s == 10) {
+    if (s[pos] == 0 || s[pos] == 10 || depth > 20) {
+    } else if (r->subRuleCount == 0) {
+        if (s[pos] == r->match) {
+            res->strPos[res->strPosCount++] = pos + 1; // add to result list
+        }
     } else {
         for (int sr = 0; sr < r->subRuleCount; sr++) {
-            int i = 0;
-            *sret = s;
+            result_t work = { .strPosCount = 1, .strPos = {pos} };
             bool rulePartValid = true;
             for (int i = 0; r->subRule[sr][i] != 0; i++) {
-                if (!checkRule(r->subRule[sr][i], *sret, sret)) {
-                    rulePartValid = false;
+                result_t rule = { .strPosCount = 0 };
+                for (int w = 0; w < work.strPosCount; w++) {
+                    int pos = work.strPos[w];
+                    checkRule(r->subRule[sr][i], s, pos, &rule, depth + 1);
                 }
+                work = rule;
             }
             if (rulePartValid) {
-                return true;
+                memcpy(&res->strPos[res->strPosCount], &work.strPos[0], work.strPosCount * sizeof work.strPos[0]);
+                res->strPosCount += work.strPosCount;
             }
         }
     }
-    return result;
 }
 
 bool isValid(char *s) {
-    return checkRule(0, s, &s) && (*s == 0 || *s == 10);
+    //puts(s);
+    result_t res = { 0 };
+    
+    bool result = false;
+    checkRule(0, s, 0, &res, 0);
+    for (int i = 0; i < res.strPosCount; i++) {
+        char c = s[res.strPos[i]];
+        if (c == 0 || c == 10) {
+            result = true;
+        }
+    }
+    return result;
 }
 
 int main(void) {
@@ -91,7 +108,34 @@ int main(void) {
             }
         }
         printf("part 1 sum of all valid  %d\n", sum);
-        // printf("part 2 product of all departures %llu\n", departureProduct());
+
+        fseek(f, 0, SEEK_SET);
+        memset(rule, 0, sizeof rule);
+        sum = 0; part = 0;
+        while (fgets(buf, sizeof buf, f) != NULL) {
+            if (*buf != 0 && *buf != 10) {
+                switch (part){
+                    case 0: // read rule
+                        parseRule(buf);
+                        break;
+
+                    case 1: // check if valid
+                        sum += isValid(buf) ? 1 : 0;
+                        break;
+                }
+            } else {
+                part++;
+                // rule update
+                rule[8].subRuleCount = 2;
+                rule[8].subRule[1][0] = 42;
+                rule[8].subRule[1][1] = 8;
+                rule[11].subRuleCount = 2;
+                rule[11].subRule[1][0] = 42;
+                rule[11].subRule[1][1] = 11;
+                rule[11].subRule[1][2] = 31;
+            }
+        }
+        printf("part 2 sum of all valid  %d\n", sum);
         fclose(f);
     }
     return 0;
