@@ -44,9 +44,9 @@ void parseRule(char *b) {
     }
 }
 
-void checkRule(int ruleId, char *s, int pos, result_t *res, int depth) {
+void checkRule(int ruleId, char *s, int pos, result_t *res) {
     rule_t *r = &rule[ruleId];
-    if (s[pos] == 0 || s[pos] == 10 || depth > 20) {
+    if (s[pos] == 0 || s[pos] == 10) {
     } else if (r->subRuleCount == 0) {
         if (s[pos] == r->match) {
             res->strPos[res->strPosCount++] = pos + 1; // add to result list
@@ -57,29 +57,28 @@ void checkRule(int ruleId, char *s, int pos, result_t *res, int depth) {
             for (int i = 0; r->subRule[sr][i] != 0; i++) {
                 result_t rule = { .strPosCount = 0 };
                 for (int w = 0; w < work.strPosCount; w++) {
-                    checkRule(r->subRule[sr][i], s, work.strPos[w], &rule, depth + 1);
+                    checkRule(r->subRule[sr][i], s, work.strPos[w], &rule);
                 }
-                work = rule;
+                work = rule; // may be faster to only copy the used bytes, as below
             }
-            memcpy(&res->strPos[res->strPosCount], &work.strPos[0], work.strPosCount * sizeof work.strPos[0]);
+            memcpy(&res->strPos[res->strPosCount], &work.strPos[0], 
+                work.strPosCount * sizeof work.strPos[0]
+            );
             res->strPosCount += work.strPosCount;
         }
     }
 }
 
 bool isValid(char *s) {
-    //puts(s);
     result_t res = { 0 };
-    
-    bool result = false;
-    checkRule(0, s, 0, &res, 0);
+    checkRule(0, s, 0, &res);
     for (int i = 0; i < res.strPosCount; i++) {
         char c = s[res.strPos[i]];
         if (c == 0 || c == 10) {
-            result = true;
+            return true;
         }
     }
-    return result;
+    return false;
 }
 
 int main(void) {
