@@ -13,6 +13,11 @@ typedef struct {
 
 rule_t rule[200];
 
+typedef struct {
+    int strPosCount;
+    int strPos[100];
+} result_t;
+
 void parseRule(char *b) {
     int num = strtol(b, &b, 0);
     if (num >= sizeof rule / sizeof rule[0]) {
@@ -39,11 +44,6 @@ void parseRule(char *b) {
     }
 }
 
-typedef struct {
-    int strPosCount;
-    int strPos[100];
-} result_t;
-
 void checkRule(int ruleId, char *s, int pos, result_t *res, int depth) {
     rule_t *r = &rule[ruleId];
     if (s[pos] == 0 || s[pos] == 10 || depth > 20) {
@@ -54,19 +54,15 @@ void checkRule(int ruleId, char *s, int pos, result_t *res, int depth) {
     } else {
         for (int sr = 0; sr < r->subRuleCount; sr++) {
             result_t work = { .strPosCount = 1, .strPos = {pos} };
-            bool rulePartValid = true;
             for (int i = 0; r->subRule[sr][i] != 0; i++) {
                 result_t rule = { .strPosCount = 0 };
                 for (int w = 0; w < work.strPosCount; w++) {
-                    int pos = work.strPos[w];
-                    checkRule(r->subRule[sr][i], s, pos, &rule, depth + 1);
+                    checkRule(r->subRule[sr][i], s, work.strPos[w], &rule, depth + 1);
                 }
                 work = rule;
             }
-            if (rulePartValid) {
-                memcpy(&res->strPos[res->strPosCount], &work.strPos[0], work.strPosCount * sizeof work.strPos[0]);
-                res->strPosCount += work.strPosCount;
-            }
+            memcpy(&res->strPos[res->strPosCount], &work.strPos[0], work.strPosCount * sizeof work.strPos[0]);
+            res->strPosCount += work.strPosCount;
         }
     }
 }
