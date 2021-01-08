@@ -8,7 +8,7 @@
 struct tile {
     int  id;
     char data[10][10];     // all tiles have 10*10
-    int rot; // rotation of the tile
+    int rot; // rotation or better mutation of the tile
     uint16_t  sideMask[8]; // top richt bottom left and all mirroed again
     struct tile *link[4];
     struct tile *right;
@@ -20,7 +20,7 @@ typedef struct tile tile_t;
 int tileSides[1024]; // array for counting side Masks (10 Bit)
 tile_t tile[150];
 int tileCount = 0;
-int firstCorner = -1;
+int corners[4];
 const char seaMonster[] = "                  # " 
                           "#    ##    ##    ###"
                           " #  #  #  #  #  #   ";
@@ -60,6 +60,7 @@ int64_t calcSides(void) {
     }
     // search corner tiles
     int64_t cornerProduct = 1;
+    int c = 0;
     for (int i = 0; i < tileCount; i++) {
         tile_t *t = &tile[i];
         int sides = 0;
@@ -69,9 +70,7 @@ int64_t calcSides(void) {
             }
         }
         if (sides == 2) {
-            if (firstCorner < 0) {
-                firstCorner = i;
-            }
+            corners[c++] = i;
             cornerProduct *= t->id;
             printf("%d  index=%d\n", t->id, i);
         }
@@ -81,6 +80,7 @@ int64_t calcSides(void) {
 
 #define IDX2D(y, x, lenx) (y)*(lenx) + (x)
 char getAdv(char *d, int rot, int x, int y, int len) {
+    if (x >= len || y >= len) return 0;
     int l = len - 1; 
     return rot == 0 ? d[IDX2D(y,     x,     len)] : //   0    
            rot == 1 ? d[IDX2D(x,     l - y, len)] : //  90    
@@ -98,18 +98,6 @@ char get(char d[10][10], int rot, int x, int y) { // for compatibility
 
 char get2(tile_t *t, int x, int y) {
     return getAdv((char*)t->data, t->rot, x, y, 10);
-}
-
-uint16_t getSideMask(tile_t *t, bool right) {
-    uint16_t mask = 0;
-    for (int j = 0; j < 10; j++) {
-        if (right) {
-            mask |= get2(t, 9, j) == '#' ? 1 << j : 0; 
-        } else {
-            mask |= get2(t, j, 9) == '#' ? 1 << j : 0; 
-        } 
-    }
-    return mask;
 }
 
 bool fitRight(tile_t *left, tile_t *right) {
@@ -130,10 +118,7 @@ bool fitDown(tile_t *up, tile_t *down) {
     return true;
 }
 
-// 
-
-
-bool setRotation(tile_t *pre, tile_t *cur, bool right) {
+bool setRotation(tile_t *pre, tile_t *cur, tile_t *up, bool right) {
     int linkCountCur = 0, linkCountPrev = 0;
     for (int j = 0; j < 4; j++) {
         linkCountCur  += cur->link[j] != 0;
@@ -142,33 +127,50 @@ bool setRotation(tile_t *pre, tile_t *cur, bool right) {
         } 
     }
     bool end = linkCountPrev > linkCountCur;
+    tile_t *nextUp = !right ? pre : (up != 0 ? up->right : 0);
     bool checkRight = (right && !end) || !right;
     bool checkDown  = (!right && !end);
+    bool checkUp    = nextUp != 0 && right;
     for (int i = 0; i < 8; i++) {
         cur->rot = i;
         if (pre == 0 || (right ? fitRight(pre, cur) : fitDown(pre, cur))) {
-            printTileRot(cur);
+            bool found[4] = {false, false, false, false};
+            // printTileRot(cur);
             int  countMatch = 0;
-            for (int j = 0; j < 4; j++) {
-                if (checkRight && cur->link[j] != 0 && pre != cur->link[j]) {
-                    if (setRotation(cur, cur->link[j], true)) {
-                        printf("%d right %d(rot=%d)\n", cur->id, cur->link[j]->id, cur->link[j]->rot);
-                        cur->right = cur->link[j];
-                        countMatch++;
+            if (checkUp && nextUp != 0) {
+                if (fitDown(nextUp, cur)) {
+                    // printf("%d up matches\n", cur->id);
+                    countMatch++;
+                    for (int j = 0; j < 4; j++) {
+                        if (cur->link[j] == nextUp) {
+                            found[j] = true;
+                        } 
                     }
                 }
             }
             for (int j = 0; j < 4; j++) {
-                if (checkDown && cur->link[j] != 0 && pre != cur->link[j]) {
-                    if (setRotation(cur, cur->link[j], false)) {
-                        printf("%d down %d(rot=%d)\n", cur->id, cur->link[j]->id, cur->link[j]->rot);
+                if (checkRight && !found[j] && cur->link[j] != 0 && pre != cur->link[j]) {
+                    if (setRotation(cur, cur->link[j], nextUp, true)) {
+                        // printf("%d right %d(rot=%d)\n", cur->id, cur->link[j]->id, cur->link[j]->rot);
+                        cur->right = cur->link[j];
+                        found[j] = true;
+                        countMatch++;
+                        break;
+                    }
+                }
+            }
+            for (int j = 0; j < 4; j++) {
+                if (checkDown && !found[j] && cur->link[j] != 0 && pre != cur->link[j]) {
+                    if (setRotation(cur, cur->link[j], 0, false)) {
+                        // printf("%d down %d(rot=%d)\n", cur->id, cur->link[j]->id, cur->link[j]->rot);
                         cur->down = cur->link[j];
                         countMatch++;
+                        break;
                     }
                 }
             }
-            if (countMatch == (checkRight + checkDown)) {
-                printf("id %d match rot=%d\n", cur->id, cur->rot);
+            if (countMatch == (checkRight + checkDown + checkUp)) {
+                // printf("id %d match rot=%d\n", cur->id, cur->rot);
                 return true;
             } else {
                 cur->right = cur->down = 0;
@@ -190,37 +192,30 @@ void printTileRot(tile_t *t) {
     puts("");
 }
 
-/*  rotation mirrorin combinations
-sides   ! means reversed
-    1     x123
- 4     2  y
-    3     1
-          2             t
- 1 2 3 4   0      y  x  0 
-!4 1!2 3  90      x !y  1 
-!3!4!1!2 180     !y !x  0
- 2!3 4!1 270     !x  y  1
-!1 4!3 2  mirr x  y !x  0
- 3!2 1!4  mirr y !y  x  0
- 4 3 2 1  fl      x  y  
-!2!1!4!3  mir fl !x !y   
- */
+void printRot(char *r, int rot, int len) {
+    printf("rot %d\n", rot);
+    for (int y = 0; y < len; y++) {
+        for (int x = 0; x < len; x++) {
+            printf("%c", getAdv(r, rot, x, y, len));
+        }
+        puts("");
+    }
+    puts("");
+}
 
 char *copyImageRow(char *result, tile_t *t, int row) {
-    // for (int i = 1; i < 9; i++) {
-    //     *result++ = get(t->data, t->rot, i, row);
-    // }
-    // if (t->link[next] == 0) {
-    //     return result;
-    // } else {
-    //     return copyImageRow(result, t->link[next], row);
-    // }
+    for (int i = 1; i < 9; i++) {
+        *result++ = get2(t, i, row);
+    }
+    if (t->right == 0) {
+        return result;
+    } else {
+        return copyImageRow(result, t->right, row);
+    }
     return result;
 }
 
-
-
-void puzzzle() {
+int puzzzle() {
     // link puzzel tiles
     for (int i = 0; i < tileCount; i++) {
         tile_t *t = &tile[i];
@@ -238,26 +233,66 @@ void puzzzle() {
             }
         }
     }
-    setRotation(0, &tile[firstCorner], false);
-    // char result[8*8*tileCount + 1];
-    // memset(result, 0, 8*8*tileCount + 1);
-    // // start with the first corner
-    // char *r = result;
-    // oriantateFirst(&tile[firstCorner]);
-    // for (int i = 1; i < 2/*9*/; i++) {
-    //     r = copyImageRow(r, &tile[firstCorner], i, 0);
-    // }
-    // int lineLen = strlen(result);
-    // tile_t *t = getDown(&tile[firstCorner]);
-    // r = copyImageRow(r, t, 1, 0);
-    // tile_t *t2 = getDown(t);
-    // r = copyImageRow(r, t2, 1, 0);
+    int c = 0;
+    //while (c < 4 && !setRotation(0, &tile[corners[c]], 0, false)) c++;
+    setRotation(0, &tile[corners[c]], 0, false);
+    if (c == 4) return 0;
+    char result[8*8*tileCount +2];
+    memset(result, 0, 8*8*tileCount + 1);
+    // start with the first corner
+    char *r = result;
+    tile_t *t = &tile[corners[c]];
+    // get line len
+    r = copyImageRow(r, t, 1);
+    int len = strlen(result);
+    int rows = 0;
+    r = result;
+    // copy mached puzzel to array
+    while (t != 0) {
+        for (int i = 1; i < 9; i++) {
+            r = copyImageRow(r, t, i);
+            rows++;
+        }
+        t = t->down;
+    }
+    int countHash = 0;
+    
+    // search for seamonster in all rotations
+    for (int rot = 0; rot < 8; rot++) {
+        // printRot(result, rot, len);
+        countHash = 0;
+        int countSeamonster = 0;
+        for (int x = 0; x < len; x++) {
+            for (int y = 0; y < rows;  y++) {
+                char b = getAdv(result, rot, x, y, len);
+                countHash += b == '#';
+                bool match = true;
+                for (int o = 0; o < 15; o++) {
+                    int *off = seaMonsterOffset[o];
+                    int ox = x + off[0], oy = y + off[1];
+                    if (getAdv(result, rot, ox, oy, len) != '#') {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    countSeamonster++;
+                }
+            }
+        }
+        if (countSeamonster > 0) {
+            // printf("%d Seamonsters found\n", countSeamonster);
+            countHash -=  countSeamonster * 15;
+            break;
+        }
+    }
+    return countHash;
 }
 
 #define ASSERT_EQ(a, b, r, c) {if (a != b) printf("%s:%d error %d %d "#a" (%d) != "#b" (%d)\n", __FILE__, __LINE__, r, c, a, b); }
 
 int main(void) {
-    FILE* f = fopen("test20.txt", "r");
+    FILE* f = fopen("input20.txt", "r");
     if (f != NULL) {
         int  sideLen = 0;
         char buf[200];
@@ -290,10 +325,7 @@ int main(void) {
         fclose(f);
         printf("part 1: corner product %lld\n", calcSides());
         calcSeamonsterOffsets();
-        puzzzle();
-        // for (int i = 0; i < tileCount; i++) {
-        //     printTileRot(&tile[i]);
-        // }
+        printf("Part 2: %d\n",  puzzzle());
     }
     return 0;
 }
